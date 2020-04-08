@@ -606,6 +606,7 @@ Signaling.Standalone.prototype.connect = function() {
 			clearTimeout(this.signalingConnectionTimeout)
 			this.signalingConnectionTimeout = null
 		}
+
 		if (this.signalingConnectionWarning !== null) {
 			this.signalingConnectionWarning.hideToast()
 			this.signalingConnectionWarning = null
@@ -614,7 +615,11 @@ Signaling.Standalone.prototype.connect = function() {
 			this.signalingConnectionError.hideToast()
 			this.signalingConnectionError = null
 		}
-		this.reconnect()
+
+		if (event.code !== 1001) {
+			console.debug('Reconnecting socket as the connection was closed unexpected')
+			this.reconnect()
+		}
 	}.bind(this)
 	this.socket.onmessage = function(event) {
 		let data = event.data
