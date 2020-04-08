@@ -28,6 +28,7 @@ import { PARTICIPANT } from '../../constants'
 import { EventBus } from '../../services/EventBus'
 
 let signaling = null
+let signalingToken = null
 let webRtc = null
 const callParticipantCollection = new CallParticipantCollection()
 const localCallParticipantModel = new LocalCallParticipantModel()
@@ -35,17 +36,25 @@ const localMediaModel = new LocalMediaModel()
 
 let pendingConnectSignaling = null
 
-async function connectSignaling() {
-	if (signaling) {
-		return
+async function connectSignaling(token) {
+	if (signalingToken === token) {
+		if (signaling) {
+			return
+		}
+
+		if (pendingConnectSignaling) {
+			return pendingConnectSignaling
+		}
+	} else if (signaling) {
+		// Changing signaling connection
+		signaling.disconnect()
+		signaling = null
 	}
 
-	if (pendingConnectSignaling) {
-		return pendingConnectSignaling
-	}
+	signalingToken = token
 
 	pendingConnectSignaling = new Promise((resolve, reject) => {
-		Signaling.loadSettings(null).then(() => {
+		Signaling.loadSettings(token).then(() => {
 			signaling = Signaling.createConnection()
 
 			EventBus.$emit('signalingConnectionEstablished')
@@ -59,8 +68,8 @@ async function connectSignaling() {
 	return pendingConnectSignaling
 }
 
-async function getSignaling() {
-	await connectSignaling()
+async function getSignaling(token) {
+	await connectSignaling(token)
 
 	return signaling
 }
@@ -105,11 +114,12 @@ function setupWebRtc() {
  * Join the given conversation on the respective signaling server with the given sessionId
  *
  * @param {string} token Conversation to join
+ * @param {string} sessionId Session id to join with
  * @returns {Promise<void>}
  */
-async function signalingJoinConversation(token) {
-	await getSignaling()
-	await signaling.joinRoom(token)
+async function signalingJoinConversation(token, sessionId) {
+	await getSignaling(token)
+	await signaling.joinRoom(token, sessionId)
 }
 
 /**
@@ -119,7 +129,7 @@ async function signalingJoinConversation(token) {
  * @returns {Promise<void>}
  */
 async function signalingJoinCall(token) {
-	await connectSignaling()
+	await connectSignaling(token)
 
 	setupWebRtc()
 
@@ -139,7 +149,7 @@ async function signalingJoinCall(token) {
  * @returns {Promise<void>}
  */
 async function signalingLeaveCall(token) {
-	await getSignaling()
+	await getSignaling(token)
 	await signaling.leaveCall(token)
 }
 
@@ -150,7 +160,7 @@ async function signalingLeaveCall(token) {
  * @returns {Promise<void>}
  */
 async function signalingLeaveConversation(token) {
-	await getSignaling()
+	await getSignaling(token)
 	await signaling.leaveRoom(token)
 }
 
