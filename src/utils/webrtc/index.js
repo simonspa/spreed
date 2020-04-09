@@ -26,50 +26,59 @@ import LocalCallParticipantModel from './models/LocalCallParticipantModel'
 import LocalMediaModel from './models/LocalMediaModel'
 import { PARTICIPANT } from '../../constants'
 import { EventBus } from '../../services/EventBus'
+import { fetchSignalingSettings } from '../../services/signalingService'
 
 let signaling = null
 let signalingToken = null
 let webRtc = null
+let settings = null
+let currentSignalingServer = null
 const callParticipantCollection = new CallParticipantCollection()
 const localCallParticipantModel = new LocalCallParticipantModel()
 const localMediaModel = new LocalMediaModel()
 
 let pendingConnectSignaling = null
 
-async function connectSignaling(token) {
-	if (signalingToken === token) {
-		if (signaling) {
-			return
-		}
+async function loadSignalingSettings(token) {
+	const response = await fetchSignalingSettings(token)
+	settings = response.data.ocs.data
+}
 
-		if (pendingConnectSignaling) {
-			return pendingConnectSignaling
-		}
-	} else if (signaling) {
-		// Changing signaling connection
-		signaling.disconnect()
-		signaling = null
+async function connectSignaling() {
+	if (signaling) {
+		return
 	}
 
-	signalingToken = token
+	if (pendingConnectSignaling) {
+		return pendingConnectSignaling
+	}
 
 	pendingConnectSignaling = new Promise((resolve, reject) => {
-		Signaling.loadSettings(token).then(() => {
-			signaling = Signaling.createConnection()
-
-			EventBus.$emit('signalingConnectionEstablished')
-
-			pendingConnectSignaling = null
-
-			resolve()
-		})
+		signaling = Signaling.createConnection(settings)
+		EventBus.$emit('signalingConnectionEstablished')
+		pendingConnectSignaling = null
+		resolve()
 	})
 
 	return pendingConnectSignaling
 }
 
 async function getSignaling(token) {
-	await connectSignaling(token)
+	if (signalingToken !== token) {
+		await loadSignalingSettings(token)
+
+		if (currentSignalingServer !== settings.url && signaling) {
+			signaling.disconnect()
+			signaling = null
+		}
+
+		signalingToken = token
+		currentSignalingServer = settings.url
+
+		if (!signaling) {
+			await connectSignaling(token)
+		}
+	}
 
 	return signaling
 }
@@ -188,8 +197,6 @@ export {
 	callParticipantCollection,
 	localCallParticipantModel,
 	localMediaModel,
-
-	connectSignaling,
 
 	signalingJoinConversation,
 	signalingJoinCall,
