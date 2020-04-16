@@ -62,8 +62,8 @@ const getters = {
 
 		let index
 
-		if (participantIdentifier.hasOwnProperty('participant')) {
-			index = state.participants[token].findIndex(participant => participant.userId === participantIdentifier.participant)
+		if (participantIdentifier.hasOwnProperty('userId')) {
+			index = state.participants[token].findIndex(participant => participant.userId === participantIdentifier.userId)
 		} else {
 			index = state.participants[token].findIndex(participant => participant.sessionId === participantIdentifier.sessionId)
 		}
