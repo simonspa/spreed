@@ -371,6 +371,7 @@ export default {
 		},
 		handleRenameConversation() {
 			this.$store.dispatch('showSidebar')
+			this.$store.dispatch('isRenamingConversation', true)
 		},
 	},
 }
