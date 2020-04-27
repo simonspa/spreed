@@ -11,8 +11,8 @@
 		"lint": "eslint --ext .js,.vue src",
 		"dev": "NODE_ENV=development webpack --config webpack.dev.js",
 		"lint:fix": "eslint --ext .js,.vue src --fix",
-		"stylelint": "stylelint **/*.css **/*.scss **/*.vue",
-		"stylelint:fix": "stylelint **/*.css **/*.scss **/*.vue --fix",
+		"stylelint": "stylelint css/*.css css/*.scss src/**/*.scss src/**/*.vue",
+		"stylelint:fix": "stylelint css/*.css css/*.scss src/**/*.scss src/**/*.vue --fix",
 		"watch": "NODE_ENV=development webpack --progress --watch --config webpack.dev.js"
 	},
 	"dependencies": {
