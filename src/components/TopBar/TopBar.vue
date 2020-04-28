@@ -294,6 +294,7 @@ export default {
 	methods: {
 		openSidebar() {
 			this.$store.dispatch('showSidebar')
+			localStorage.setItem('sidebarOpen', 'true')
 		},
 
 		fullScreenChanged() {
