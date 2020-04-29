@@ -550,10 +550,11 @@ Signaling.Standalone.prototype.reconnect = function() {
 }
 
 Signaling.Standalone.prototype.connect = function() {
-	if (this.signalingConnectionWarning === null) {
+	if (this.signalingConnectionError === null
+		&& this.signalingConnectionWarning === null) {
 		this.signalingConnectionTimeout = setTimeout(() => {
 			this.signalingConnectionWarning = showWarning(t('spreed', 'Establishing signaling connection is taking longer than expected …'), {
-				timeout: 0,
+				timeout: -1,
 			})
 		}, 2000)
 	}
@@ -595,7 +596,7 @@ Signaling.Standalone.prototype.connect = function() {
 		}
 		if (this.signalingConnectionError === null) {
 			this.signalingConnectionError = showError(t('spreed', 'Failed to establish signaling connection. Retrying …'), {
-				timeout: 0,
+				timeout: -1,
 			})
 		}
 		this.reconnect()
@@ -611,14 +612,13 @@ Signaling.Standalone.prototype.connect = function() {
 			this.signalingConnectionWarning.hideToast()
 			this.signalingConnectionWarning = null
 		}
-		if (this.signalingConnectionError !== null) {
-			this.signalingConnectionError.hideToast()
-			this.signalingConnectionError = null
-		}
 
 		if (event.code !== 1001) {
 			console.debug('Reconnecting socket as the connection was closed unexpected')
 			this.reconnect()
+		} else if (this.signalingConnectionError !== null) {
+			this.signalingConnectionError.hideToast()
+			this.signalingConnectionError = null
 		}
 	}.bind(this)
 	this.socket.onmessage = function(event) {
