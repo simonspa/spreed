@@ -65,10 +65,6 @@ async function getSignaling() {
 	return signaling
 }
 
-function getSignalingSync() {
-	return signaling
-}
-
 let currentToken = null
 let startedCall = null
 
@@ -105,7 +101,24 @@ function setupWebRtc() {
 	})
 }
 
-async function joinCall(token) {
+/**
+ * Join the given conversation on the respective signaling server with the given sessionId
+ *
+ * @param {string} token Conversation to join
+ * @returns {Promise<void>}
+ */
+async function signalingJoinConversation(token) {
+	await getSignaling()
+	await signaling.joinRoom(token)
+}
+
+/**
+ * Join the call of the given conversation
+ *
+ * @param {string} token Conversation to join the call
+ * @returns {Promise<void>}
+ */
+async function signalingJoinCall(token) {
 	await connectSignaling()
 
 	setupWebRtc()
@@ -119,12 +132,59 @@ async function joinCall(token) {
 	})
 }
 
+/**
+ * Leave the call of the given conversation
+ *
+ * @param {string} token Conversation to leave the call
+ * @returns {Promise<void>}
+ */
+async function signalingLeaveCall(token) {
+	await getSignaling()
+	await signaling.leaveCall(token)
+}
+
+/**
+ * Leave the given conversation on the respective signaling server
+ *
+ * @param {string} token Conversation to leave
+ * @returns {Promise<void>}
+ */
+async function signalingLeaveConversation(token) {
+	await getSignaling()
+	await signaling.leaveRoom(token)
+}
+
+/**
+ * Pause reconnections to the signaling server
+ * We might be unloading the page soon
+ */
+function signalingPrepareUnload() {
+	if (signaling) {
+		signaling.prepareUnload()
+	}
+}
+
+/**
+ * Immediately kill the signaling connection synchronously
+ * This should be called only in the unload handler
+ */
+function signalingKill() {
+	if (signaling) {
+		signaling.disconnect()
+	}
+}
+
 export {
 	callParticipantCollection,
 	localCallParticipantModel,
 	localMediaModel,
+
 	connectSignaling,
-	getSignaling,
-	getSignalingSync,
-	joinCall,
+
+	signalingJoinConversation,
+	signalingJoinCall,
+	signalingLeaveCall,
+	signalingLeaveConversation,
+	signalingPrepareUnload,
+	signalingKill,
 }
