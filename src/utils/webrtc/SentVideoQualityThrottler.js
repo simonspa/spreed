@@ -32,10 +32,15 @@
  * @param {LocalMediaModel} localMediaModel the model for the local media.
  * @param {CallParticipantCollection} callParticipantCollection the collection
  *        that contains the models for the rest of the participants in the call.
+ * @param {Signaling} signaling the signaling object to listen to for control
+ *        messages
  */
-export default function SentVideoQualityThrottler(localMediaModel, callParticipantCollection) {
+export default function SentVideoQualityThrottler(localMediaModel, callParticipantCollection, signaling) {
 	this._localMediaModel = localMediaModel
 	this._callParticipantCollection = callParticipantCollection
+	this._signaling = signaling
+
+	this._handlers = []
 
 	this._gracePeriodAfterSpeakingTimeout = null
 	this._speakingOrInGracePeriodAfterSpeaking = false
@@ -58,6 +63,7 @@ export default function SentVideoQualityThrottler(localMediaModel, callParticipa
 	this._availableAudiosThreshold[this.QUALITY.VERY_LOW] = 40
 	this._availableAudiosThreshold[this.QUALITY.THUMBNAIL] = 50
 
+	this._handleSignalingMessageBound = this._handleSignalingMessage.bind(this)
 	this._handleLocalVideoAvailableChangeBound = this._handleLocalVideoAvailableChange.bind(this)
 	this._handleAddParticipantBound = this._handleAddParticipant.bind(this)
 	this._handleRemoveParticipantBound = this._handleRemoveParticipant.bind(this)
@@ -65,6 +71,7 @@ export default function SentVideoQualityThrottler(localMediaModel, callParticipa
 	this._handleLocalSpeakingChangeBound = this._handleLocalSpeakingChange.bind(this)
 	this._adjustVideoQualityIfNeededBound = this._adjustVideoQualityIfNeeded.bind(this)
 
+	this._signaling.on('message', this._handleSignalingMessageBound)
 	this._localMediaModel.on('change:videoAvailable', this._handleLocalVideoAvailableChangeBound)
 
 	if (this._localMediaModel.get('videoAvailable')) {
@@ -81,10 +88,51 @@ SentVideoQualityThrottler.prototype = {
 		HIGH: 4,
 	},
 
+	on: function(event, handler) {
+		if (!this._handlers.hasOwnProperty(event)) {
+			this._handlers[event] = [handler]
+		} else {
+			this._handlers[event].push(handler)
+		}
+	},
+
+	off: function(event, handler) {
+		const handlers = this._handlers[event]
+		if (!handlers) {
+			return
+		}
+
+		const index = handlers.indexOf(handler)
+		if (index !== -1) {
+			handlers.splice(index, 1)
+		}
+	},
+
+	_trigger: function(event, args) {
+		let handlers = this._handlers[event]
+		if (!handlers) {
+			return
+		}
+
+		if (!args) {
+			args = []
+		}
+
+		args.unshift(this)
+
+		handlers = handlers.slice(0)
+		for (let i = 0; i < handlers.length; i++) {
+			const handler = handlers[i]
+			handler.apply(handler, args)
+		}
+	},
+
 	setAvailableVideosThreshold: function(availableVideosThreshold) {
 		this._validateThreshold(availableVideosThreshold)
 
 		this._availableVideosThreshold = availableVideosThreshold
+
+		this._trigger('change:availableVideosThreshold', [availableVideosThreshold])
 
 		this._adjustVideoQualityIfNeeded()
 	},
@@ -93,6 +141,8 @@ SentVideoQualityThrottler.prototype = {
 		this._validateThreshold(availableAudiosThreshold)
 
 		this._availableAudiosThreshold = availableAudiosThreshold
+
+		this._trigger('change:availableAudiosThreshold', [availableAudiosThreshold])
 
 		this._adjustVideoQualityIfNeeded()
 	},
@@ -113,6 +163,20 @@ SentVideoQualityThrottler.prototype = {
 		this._localMediaModel.off('change:videoAvailable', this._handleLocalVideoAvailableChangeBound)
 
 		this._stopListeningToChanges()
+	},
+
+	_handleSignalingMessage: function(message) {
+		if (message.type !== 'control') {
+			return
+		}
+
+		if (message.payload.action === 'forceAvailableVideosThreshold') {
+			console.debug('Available videos threshold changed by a moderator', message.payload.threshold)
+			this.setAvailableVideosThreshold(message.payload.threshold)
+		} else if (message.payload.action === 'forceAvailableAudiosThreshold') {
+			console.debug('Available audios threshold changed by a moderator', message.payload.threshold)
+			this.setAvailableAudiosThreshold(message.payload.threshold)
+		}
 	},
 
 	_handleLocalVideoAvailableChange: function(localMediaModel, videoAvailable) {
