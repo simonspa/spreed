@@ -31,7 +31,6 @@ use OCP\App\IAppManager;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\EventDispatcher\IEventListener;
-use OCP\Files\IRootFolder;
 use OCP\IConfig;
 use OCP\IInitialStateService;
 use OCP\IUser;
@@ -47,8 +46,6 @@ class TemplateLoader implements IEventListener {
 
 	/** @var IAppManager */
 	private $appManager;
-	/** @var IRootFolder */
-	private $rootFolder;
 	/** @var IUserSession */
 	private $userSession;
 
@@ -56,13 +53,11 @@ class TemplateLoader implements IEventListener {
 								Config $talkConfig,
 								IConfig $serverConfig,
 								IAppManager $appManager,
-								IRootFolder $rootFolder,
 								IUserSession $userSession) {
 		$this->initialStateService = $initialStateService;
 		$this->talkConfig = $talkConfig;
 		$this->serverConfig = $serverConfig;
 		$this->appManager = $appManager;
-		$this->rootFolder = $rootFolder;
 		$this->userSession = $userSession;
 	}
 
@@ -94,7 +89,7 @@ class TemplateLoader implements IEventListener {
 
 		$user = $this->userSession->getUser();
 		if ($user instanceof IUser) {
-			$this->publishInitialStateForUser($user, $this->rootFolder, $this->appManager);
+			$this->publishInitialStateForUser($user, $this->appManager);
 		} else {
 			$this->publishInitialStateForGuest();
 		}
